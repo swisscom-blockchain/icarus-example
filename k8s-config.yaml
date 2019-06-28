@@ -1,0 +1,40 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: example
+  namespace: icarus
+spec:
+  selector:
+    matchLabels:
+      app: example
+  template:
+    metadata:
+      labels:
+         app: example
+    spec:
+      containers:
+      - name: example
+        image: "swisscomblockchainag/icarus-example"
+        ports:
+        - containerPort: 8080
+      imagePullSecrets:
+      - name: acr-auth
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: example
+  namespace: icarus
+  labels:
+    service: example
+spec:
+   selector:
+      app: example
+   ports:
+   - port: 80
+     targetPort: 8080
+     protocol: TCP
+     name: http
+   type: LoadBalancer
