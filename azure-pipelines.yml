@@ -1,0 +1,42 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+- master
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  DockerRegistry: 'icarusexampleregistry2.azurecr.io'
+  DockerImageName: 'icarus/example'
+
+steps:
+- task: CmdLine@1
+  displayName: 'Lock image version in k8s-config.yaml'
+  inputs:
+    filename: /bin/bash
+    arguments: '-c "cat k8s-config.yaml | sed ''s#\\\${CONTAINER_IMAGE}#$(DockerRegistry)/$(DockerImageName):$(Build.BuildId)#g'' > $(build.artifactstagingdirectory)/k8s-config.yaml"'
+
+- task: Docker@2
+  inputs:
+    containerRegistry: 'icarus-example-devops-docker-connection'
+    repository: '$(DockerImageName)'
+    command: 'buildAndPush'
+    Dockerfile: '**/Dockerfile'
+    tags: |
+      $(Build.BuildId)
+      latest
+
+- task: Kubernetes@1
+  inputs:
+    connectionType: 'Kubernetes Service Connection'
+    kubernetesServiceEndpoint: 'icarus-example-devops-k8s-connection'
+    namespace: 'default'
+    command: 'apply'
+    useConfigurationFile: true
+    configuration: '$(build.artifactstagingdirectory)/k8s-config.yaml'
+    secretType: 'dockerRegistry'
+    containerRegistryType: 'Azure Container Registry'
